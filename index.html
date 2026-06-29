@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>KB Timer — Elakkian</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #242424;
+    --work: #c8f560;
+    --rest: #ff6b35;
+    --prep: #60d0f5;
+    --text: #f0f0f0;
+    --muted: #888;
+    --border: #2e2e2e;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0;
+    overflow-x: hidden;
+  }
+
+  /* ── SCREENS ── */
+  .screen { display: none; flex-direction: column; align-items: center; width: 100%; min-height: 100vh; }
+  .screen.active { display: flex; }
+
+  /* ── HOME SCREEN ── */
+  #home {
+    justify-content: center;
+    padding: 2rem 1.5rem;
+    gap: 2rem;
+  }
+
+  .logo {
+    text-align: center;
+  }
+  .logo h1 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .logo .kb-icon {
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .stats-row {
+    display: flex;
+    gap: 1rem;
+    width: 100%;
+    max-width: 400px;
+  }
+  .stat-pill {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.75rem;
+    text-align: center;
+  }
+  .stat-pill .val { font-size: 1.2rem; font-weight: 700; color: var(--work); font-family: 'Space Mono', monospace; }
+  .stat-pill .lbl { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 2px; }
+
+  .day-selector {
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .day-selector h2 {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .day-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.25rem 1.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+  }
+  .day-btn:hover, .day-btn:active { border-color: var(--work); background: #1e2410; }
+  .day-btn .day-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--work); margin-bottom: 0.3rem; }
+  .day-btn .day-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.25rem; }
+  .day-btn .day-meta { font-size: 0.75rem; color: var(--muted); }
+  .day-btn .day-exercises { font-size: 0.72rem; color: var(--muted); margin-top: 0.5rem; line-height: 1.6; }
+
+  .warmup-btn {
+    width: 100%;
+    max-width: 400px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem;
+    cursor: pointer;
+    color: var(--prep);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    transition: all 0.2s;
+  }
+  .warmup-btn:hover { background: #0e1a1f; border-color: var(--prep); }
+
+  /* ── WARMUP SCREEN ── */
+  #warmup {
+    justify-content: flex-start;
+    padding: 0;
+  }
+
+  /* ── TIMER SCREEN ── */
+  #timer {
+    justify-content: flex-start;
+    padding: 0;
+  }
+
+  /* ── SHARED TIMER UI ── */
+  .timer-header {
+    width: 100%;
+    padding: 1rem 1.25rem 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+  .timer-header .back-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 1.4rem;
+    cursor: pointer;
+    padding: 0.25rem;
+    font-family: 'Space Grotesk', sans-serif;
+  }
+  .timer-header .session-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-align: center;
+  }
+  .timer-header .round-badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--work);
+    font-family: 'Space Mono', monospace;
+  }
+
+  .phase-bar {
+    width: 100%;
+    height: 4px;
+    background: var(--border);
+    position: relative;
+  }
+  .phase-bar-fill {
+    height: 100%;
+    transition: width 0.9s linear, background 0.3s;
+    background: var(--work);
+  }
+
+  .phase-indicator {
+    text-align: center;
+    padding: 0.75rem 1rem 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+  .phase-indicator.work { color: var(--work); }
+  .phase-indicator.rest { color: var(--rest); }
+  .phase-indicator.between { color: var(--muted); }
+  .phase-indicator.prep { color: var(--prep); }
+
+  .exercise-display {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem 1.5rem;
+    text-align: center;
+    width: 100%;
+  }
+
+  .exercise-name {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.15;
+    margin-bottom: 0.5rem;
+    transition: opacity 0.2s;
+  }
+
+  .exercise-kb {
+    font-size: 0.8rem;
+    color: var(--work);
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+  }
+
+  .countdown {
+    font-family: 'Space Mono', monospace;
+    font-size: 5.5rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    transition: color 0.3s;
+    margin-bottom: 0.5rem;
+  }
+  .countdown.work { color: var(--work); }
+  .countdown.rest { color: var(--rest); }
+  .countdown.between { color: var(--muted); }
+  .countdown.prep { color: var(--prep); }
+
+  .next-up {
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 0.25rem;
+  }
+  .next-up span { color: var(--text); font-weight: 600; }
+
+  .exercise-list {
+    width: 100%;
+    padding: 0 1.25rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .ex-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    background: var(--surface);
+    border: 1px solid transparent;
+    transition: all 0.3s;
+  }
+  .ex-item.active { border-color: var(--work); background: #1a1f0a; }
+  .ex-item.done { opacity: 0.35; }
+  .ex-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
+  .ex-item.active .ex-dot { background: var(--work); }
+  .ex-item.done .ex-dot { background: var(--muted); }
+  .ex-name-small { flex: 1; font-weight: 600; }
+  .ex-kb-small { font-size: 0.68rem; color: var(--muted); }
+
+  .controls {
+    width: 100%;
+    padding: 0.75rem 1.25rem 1.5rem;
+    display: flex;
+    gap: 0.75rem;
+  }
+  .ctrl-btn {
+    flex: 1;
+    padding: 0.9rem;
+    border-radius: 12px;
+    border: none;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 0.15s;
+  }
+  .ctrl-btn.primary { background: var(--work); color: #0f0f0f; }
+  .ctrl-btn.primary:active { transform: scale(0.97); }
+  .ctrl-btn.secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+
+  /* ── COMPLETE SCREEN ── */
+  #complete {
+    justify-content: center;
+    padding: 2rem 1.5rem;
+    gap: 1.5rem;
+    text-align: center;
+  }
+  .complete-icon { font-size: 4rem; }
+  .complete-title { font-size: 1.8rem; font-weight: 700; }
+  .complete-sub { color: var(--muted); font-size: 0.9rem; line-height: 1.6; }
+  .complete-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    width: 100%;
+    max-width: 340px;
+  }
+  .complete-stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem;
+  }
+  .complete-stat .val { font-size: 1.4rem; font-weight: 700; color: var(--work); font-family: 'Space Mono', monospace; }
+  .complete-stat .lbl { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px; }
+  .home-again-btn {
+    width: 100%;
+    max-width: 340px;
+    padding: 1rem;
+    border-radius: 12px;
+    border: none;
+    background: var(--work);
+    color: #0f0f0f;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════ HOME ══════════════ -->
+<div id="home" class="screen active">
+  <div class="logo">
+    <div class="kb-icon">🏋️</div>
+    <h1>KB Fat Loss Timer</h1>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-pill"><div class="val">60s</div><div class="lbl">Work</div></div>
+    <div class="stat-pill"><div class="val">30s</div><div class="lbl">Rest</div></div>
+    <div class="stat-pill"><div class="val">3</div><div class="lbl">Rounds</div></div>
+    <div class="stat-pill"><div class="val">90s</div><div class="lbl">Between</div></div>
+  </div>
+
+  <div class="day-selector">
+    <h2>Choose Today's Session</h2>
+
+    <button class="day-btn" onclick="startSession('day1')">
+      <div class="day-label">Days 1 · 3 · 5</div>
+      <div class="day-title">Full Body Circuit</div>
+      <div class="day-meta">~27 mins · 8kg & 10kg</div>
+      <div class="day-exercises">Two-Hand Swing · Goblet Squat · Wall Sit · Single-Arm Row · Halo</div>
+    </button>
+
+    <button class="day-btn" onclick="startSession('day2')">
+      <div class="day-label">Days 2 · 4 · 6</div>
+      <div class="day-title">Conditioning + Core</div>
+      <div class="day-meta">~25 mins · 8kg & 10kg</div>
+      <div class="day-exercises">KB Swing · Goblet Squat Hold · Push Press · Farmer Carry · Plank Hold</div>
+    </button>
+
+    <button class="warmup-btn" onclick="startWarmup()">🌅 Pre-Workout Stretch — 8 mins</button>
+  </div>
+</div>
+
+<!-- ══════════════ WARMUP ══════════════ -->
+<div id="warmup" class="screen">
+  <div class="timer-header">
+    <button class="back-btn" onclick="goHome()">←</button>
+    <div class="session-label">Pre-Workout Stretch</div>
+    <div class="round-badge" id="wu-step">1 / 6</div>
+  </div>
+  <div class="phase-bar"><div class="phase-bar-fill" id="wu-bar" style="width:100%;background:var(--prep)"></div></div>
+  <div class="phase-indicator prep" id="wu-phase">GET READY</div>
+
+  <div class="exercise-display">
+    <div class="exercise-name" id="wu-name">Hip Flexor Lunge</div>
+    <div class="exercise-kb" id="wu-side">Left Side</div>
+    <div class="countdown prep" id="wu-count">45</div>
+    <div class="next-up" id="wu-next">Next: <span>Cat-Cow</span></div>
+  </div>
+
+  <div class="exercise-list" id="wu-list"></div>
+
+  <div class="controls">
+    <button class="ctrl-btn secondary" onclick="skipWarmupStep()">Skip</button>
+    <button class="ctrl-btn primary" id="wu-ctrl" onclick="toggleWarmup()">Start</button>
+  </div>
+</div>
+
+<!-- ══════════════ TIMER ══════════════ -->
+<div id="timer" class="screen">
+  <div class="timer-header">
+    <button class="back-btn" onclick="goHome()">←</button>
+    <div class="session-label" id="session-label">Full Body Circuit</div>
+    <div class="round-badge" id="round-badge">Round 1/3</div>
+  </div>
+  <div class="phase-bar"><div class="phase-bar-fill" id="phase-bar" style="width:100%"></div></div>
+  <div class="phase-indicator work" id="phase-label">WORK</div>
+
+  <div class="exercise-display">
+    <div class="exercise-name" id="ex-name">Two-Hand Swing</div>
+    <div class="exercise-kb" id="ex-kb">10kg</div>
+    <div class="countdown work" id="countdown">60</div>
+    <div class="next-up" id="next-up">Next: <span id="next-name">Goblet Squat</span></div>
+  </div>
+
+  <div class="exercise-list" id="ex-list"></div>
+
+  <div class="controls">
+    <button class="ctrl-btn secondary" onclick="skipPhase()">Skip</button>
+    <button class="ctrl-btn primary" id="main-ctrl" onclick="toggleTimer()">Start</button>
+  </div>
+</div>
+
+<!-- ══════════════ COMPLETE ══════════════ -->
+<div id="complete" class="screen">
+  <div class="complete-icon">🔥</div>
+  <div class="complete-title">Session Done!</div>
+  <div class="complete-sub">Great work. Rest, hydrate,<br>and log your food.</div>
+  <div class="complete-stats">
+    <div class="complete-stat"><div class="val" id="c-time">27</div><div class="lbl">Minutes</div></div>
+    <div class="complete-stat"><div class="val" id="c-kcal">~420</div><div class="lbl">kcal est.</div></div>
+    <div class="complete-stat"><div class="val">3</div><div class="lbl">Rounds</div></div>
+    <div class="complete-stat"><div class="val" id="c-excount">5</div><div class="lbl">Exercises</div></div>
+  </div>
+  <button class="home-again-btn" onclick="goHome()">Back to Home</button>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────
+const SESSIONS = {
+  day1: {
+    label: 'Full Body Circuit',
+    exercises: [
+      { name: 'Two-Hand Swing', kb: '10kg' },
+      { name: 'Goblet Squat', kb: '10kg' },
+      { name: 'Wall Sit Hold', kb: 'Bodyweight' },
+      { name: 'Single-Arm Row', kb: '8kg (each side)' },
+      { name: 'Halo', kb: '8kg' },
+    ]
+  },
+  day2: {
+    label: 'Conditioning + Core',
+    exercises: [
+      { name: 'KB Swing', kb: '10kg' },
+      { name: 'Goblet Squat Hold', kb: '10kg · 5s pause' },
+      { name: 'Push Press', kb: '8kg (each side)' },
+      { name: 'Farmer Carry', kb: '8kg each hand' },
+      { name: 'Plank Hold', kb: 'Bodyweight' },
+    ]
+  }
+};
+
+const WARMUP = [
+  { name: 'Hip Flexor Lunge', side: 'Left Side', duration: 45 },
+  { name: 'Hip Flexor Lunge', side: 'Right Side', duration: 45 },
+  { name: 'Cat-Cow', side: 'Slow & controlled', duration: 45 },
+  { name: 'Glute Bridge Hold', side: 'Squeeze at top', duration: 45 },
+  { name: "World's Greatest Stretch", side: 'Each Side', duration: 30 },
+  { name: 'Squat to Stand', side: 'Slow descent', duration: 45 },
+  { name: 'KB Halo', side: '8kg · Each direction', duration: 30 },
+];
+
+const WORK_TIME = 60;
+const REST_TIME = 30;
+const BETWEEN_TIME = 90;
+const ROUNDS = 3;
+
+// ── STATE ─────────────────────────────────────────────
+let interval = null;
+let currentSession = null;
+let currentRound = 0;
+let currentEx = 0;
+let timeLeft = 0;
+let phase = 'idle'; // work | rest | between | idle
+let running = false;
+let startTime = null;
+let phaseTotal = 0;
+
+// warmup state
+let wuInterval = null;
+let wuRunning = false;
+let wuIndex = 0;
+let wuTime = 0;
+let wuPhaseTotal = 0;
+
+// ── AUDIO ─────────────────────────────────────────────
+const ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+function beep(freq = 880, dur = 0.1, vol = 0.4) {
+  try {
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+    o.start(); o.stop(ctx.currentTime + dur);
+  } catch(e) {}
+}
+
+function beepWork() { beep(880, 0.12, 0.5); setTimeout(() => beep(880, 0.12, 0.5), 150); }
+function beepRest() { beep(440, 0.2, 0.4); }
+function beepEnd()  { beep(1047, 0.15, 0.5); setTimeout(() => beep(1319, 0.15, 0.5), 200); setTimeout(() => beep(1568, 0.3, 0.5), 400); }
+function tickBeep() { beep(660, 0.05, 0.2); }
+
+// ── SCREENS ───────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function goHome() {
+  clearInterval(interval);
+  clearInterval(wuInterval);
+  running = false; wuRunning = false;
+  showScreen('home');
+}
+
+// ── WARMUP ────────────────────────────────────────────
+function startWarmup() {
+  wuIndex = 0; wuRunning = false;
+  if (wuInterval) clearInterval(wuInterval);
+  renderWarmupList();
+  updateWarmupDisplay();
+  document.getElementById('wu-ctrl').textContent = 'Start';
+  showScreen('warmup');
+}
+
+function renderWarmupList() {
+  const list = document.getElementById('wu-list');
+  list.innerHTML = WARMUP.map((w, i) => `
+    <div class="ex-item ${i === 0 ? 'active' : ''}" id="wu-item-${i}">
+      <div class="ex-dot"></div>
+      <div class="ex-name-small">${w.name}</div>
+      <div class="ex-kb-small">${w.duration}s</div>
+    </div>`).join('');
+}
+
+function updateWarmupDisplay() {
+  const w = WARMUP[wuIndex];
+  document.getElementById('wu-name').textContent = w.name;
+  document.getElementById('wu-side').textContent = w.side;
+  document.getElementById('wu-count').textContent = wuTime || w.duration;
+  document.getElementById('wu-step').textContent = `${wuIndex + 1} / ${WARMUP.length}`;
+  const next = WARMUP[wuIndex + 1];
+  document.getElementById('wu-next').innerHTML = next
+    ? `Next: <span>${next.name}</span>`
+    : `<span>Warmup Complete!</span>`;
+  document.querySelectorAll('[id^="wu-item-"]').forEach((el, i) => {
+    el.className = 'ex-item' + (i === wuIndex ? ' active' : i < wuIndex ? ' done' : '');
+  });
+}
+
+function toggleWarmup() {
+  if (ctx.state === 'suspended') ctx.resume();
+  wuRunning = !wuRunning;
+  document.getElementById('wu-ctrl').textContent = wuRunning ? 'Pause' : 'Resume';
+  if (wuRunning) {
+    if (!wuTime) wuTime = WARMUP[wuIndex].duration;
+    wuPhaseTotal = wuTime;
+    wuInterval = setInterval(warmupTick, 1000);
+  } else {
+    clearInterval(wuInterval);
+  }
+}
+
+function warmupTick() {
+  if (!wuRunning) return;
+  wuTime--;
+  const pct = (wuTime / wuPhaseTotal) * 100;
+  document.getElementById('wu-bar').style.width = pct + '%';
+  document.getElementById('wu-count').textContent = wuTime;
+  if (wuTime <= 3 && wuTime > 0) tickBeep();
+  if (wuTime <= 0) {
+    beepWork();
+    wuIndex++;
+    if (wuIndex >= WARMUP.length) {
+      clearInterval(wuInterval);
+      document.getElementById('wu-phase').textContent = 'COMPLETE!';
+      document.getElementById('wu-name').textContent = 'Warmup Done 🎉';
+      document.getElementById('wu-side').textContent = 'Start your session';
+      document.getElementById('wu-count').textContent = '–';
+      document.getElementById('wu-ctrl').textContent = 'Done';
+      wuRunning = false;
+      return;
+    }
+    wuTime = WARMUP[wuIndex].duration;
+    wuPhaseTotal = wuTime;
+    updateWarmupDisplay();
+  }
+}
+
+function skipWarmupStep() {
+  wuTime = 1;
+}
+
+// ── MAIN TIMER ────────────────────────────────────────
+function startSession(dayKey) {
+  if (ctx.state === 'suspended') ctx.resume();
+  currentSession = SESSIONS[dayKey];
+  currentRound = 1;
+  currentEx = 0;
+  phase = 'work';
+  timeLeft = WORK_TIME;
+  phaseTotal = WORK_TIME;
+  running = false;
+  startTime = Date.now();
+
+  document.getElementById('session-label').textContent = currentSession.label;
+  document.getElementById('main-ctrl').textContent = 'Start';
+  renderExList();
+  updateTimerDisplay();
+  showScreen('timer');
+}
+
+function renderExList() {
+  const list = document.getElementById('ex-list');
+  list.innerHTML = currentSession.exercises.map((e, i) => `
+    <div class="ex-item ${i === currentEx ? 'active' : i < currentEx ? 'done' : ''}" id="ex-item-${i}">
+      <div class="ex-dot"></div>
+      <div class="ex-name-small">${e.name}</div>
+      <div class="ex-kb-small">${e.kb}</div>
+    </div>`).join('');
+}
+
+function updateTimerDisplay() {
+  const ex = currentSession.exercises[currentEx];
+  const nextEx = currentSession.exercises[currentEx + 1];
+
+  document.getElementById('ex-name').textContent =
+    phase === 'between' ? 'Rest Between Rounds' :
+    phase === 'rest' ? 'Rest' : ex.name;
+
+  document.getElementById('ex-kb').textContent =
+    phase === 'work' ? ex.kb :
+    phase === 'rest' ? (nextEx ? `Next: ${nextEx.name}` : 'Last exercise done') :
+    `Round ${currentRound} of ${ROUNDS} complete`;
+
+  document.getElementById('countdown').textContent = timeLeft;
+  document.getElementById('round-badge').textContent = `Round ${currentRound}/${ROUNDS}`;
+
+  // phase label
+  const phaseLabel = document.getElementById('phase-label');
+  const countdown = document.getElementById('countdown');
+  phaseLabel.className = 'phase-indicator ' + phase;
+  countdown.className = 'countdown ' + phase;
+
+  if (phase === 'work') phaseLabel.textContent = '— WORK —';
+  else if (phase === 'rest') phaseLabel.textContent = '— REST —';
+  else phaseLabel.textContent = `— ROUND REST ${ROUNDS - currentRound + 1} REMAINING —`;
+
+  // next up
+  const nextUp = document.getElementById('next-up');
+  if (phase === 'work') {
+    if (nextEx) nextUp.innerHTML = `Next: <span>${nextEx.name}</span>`;
+    else nextUp.innerHTML = currentRound < ROUNDS ? `Next: <span>Round Rest 90s</span>` : `<span>Final exercise!</span>`;
+  } else if (phase === 'rest') {
+    if (nextEx) nextUp.innerHTML = `Coming up: <span>${nextEx.name}</span>`;
+    else nextUp.innerHTML = `<span>Round complete</span>`;
+  } else {
+    nextUp.innerHTML = `<span>Round ${currentRound} starting soon</span>`;
+  }
+
+  // progress bar
+  const pct = (timeLeft / phaseTotal) * 100;
+  const bar = document.getElementById('phase-bar');
+  bar.style.width = pct + '%';
+  bar.style.background = phase === 'work' ? 'var(--work)' : phase === 'rest' ? 'var(--rest)' : 'var(--muted)';
+
+  // exercise list highlights
+  document.querySelectorAll('[id^="ex-item-"]').forEach((el, i) => {
+    el.className = 'ex-item' + (i === currentEx && phase === 'work' ? ' active' : i < currentEx ? ' done' : '');
+  });
+}
+
+function toggleTimer() {
+  if (ctx.state === 'suspended') ctx.resume();
+  running = !running;
+  document.getElementById('main-ctrl').textContent = running ? 'Pause' : 'Resume';
+  if (running) {
+    interval = setInterval(timerTick, 1000);
+  } else {
+    clearInterval(interval);
+  }
+}
+
+function timerTick() {
+  if (!running) return;
+  timeLeft--;
+
+  if (timeLeft <= 3 && timeLeft > 0) tickBeep();
+
+  updateTimerDisplay();
+
+  if (timeLeft <= 0) {
+    advancePhase();
+  }
+}
+
+function advancePhase() {
+  const totalEx = currentSession.exercises.length;
+
+  if (phase === 'work') {
+    beepRest();
+    // move to rest or between rounds
+    if (currentEx < totalEx - 1) {
+      phase = 'rest';
+      timeLeft = REST_TIME;
+      phaseTotal = REST_TIME;
+      currentEx++;
+    } else {
+      // end of round
+      if (currentRound < ROUNDS) {
+        phase = 'between';
+        timeLeft = BETWEEN_TIME;
+        phaseTotal = BETWEEN_TIME;
+      } else {
+        // ALL DONE
+        clearInterval(interval);
+        running = false;
+        sessionComplete();
+        return;
+      }
+    }
+  } else if (phase === 'rest') {
+    beepWork();
+    phase = 'work';
+    timeLeft = WORK_TIME;
+    phaseTotal = WORK_TIME;
+  } else if (phase === 'between') {
+    beepWork();
+    currentRound++;
+    currentEx = 0;
+    phase = 'work';
+    timeLeft = WORK_TIME;
+    phaseTotal = WORK_TIME;
+    renderExList();
+  }
+
+  updateTimerDisplay();
+}
+
+function skipPhase() {
+  timeLeft = 1;
+}
+
+function sessionComplete() {
+  beepEnd();
+  const elapsed = Math.round((Date.now() - startTime) / 60000);
+  const kcal = Math.round(84 * 0.1 * elapsed); // rough MET estimate
+  document.getElementById('c-time').textContent = elapsed;
+  document.getElementById('c-kcal').textContent = '~' + kcal;
+  document.getElementById('c-excount').textContent = currentSession.exercises.length;
+  showScreen('complete');
+}
+</script>
+</body>
+</html>
