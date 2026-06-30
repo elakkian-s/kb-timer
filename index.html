@@ -368,6 +368,10 @@
     </button>
 
     <button class="warmup-btn" onclick="startWarmup()">🌅 Pre-Workout Stretch — 8 mins</button>
+    <button class="warmup-btn" onclick="startCooldown()">🧘 Post-Workout Cool Down — 6 mins</button>
+
+    <button class="warmup-btn" id="easy-toggle" onclick="setEasyMode(!easyMode)">Standard Mode (60s · 3 rounds)</button>
+    <button class="warmup-btn" id="voice-toggle" onclick="toggleVoice()">🔊 Voice On</button>
   </div>
 </div>
 
@@ -375,7 +379,7 @@
 <div id="warmup" class="screen">
   <div class="timer-header">
     <button class="back-btn" onclick="goHome()">←</button>
-    <div class="session-label">Pre-Workout Stretch</div>
+    <div class="session-label" id="wu-title">Pre-Workout Stretch</div>
     <div class="round-badge" id="wu-step">1 / 6</div>
   </div>
   <div class="phase-bar"><div class="phase-bar-fill" id="wu-bar" style="width:100%;background:var(--prep)"></div></div>
@@ -470,10 +474,48 @@ const WARMUP = [
   { name: 'KB Halo', side: '8kg · Each direction', duration: 30 },
 ];
 
-const WORK_TIME = 60;
-const REST_TIME = 30;
-const BETWEEN_TIME = 90;
-const ROUNDS = 3;
+const COOLDOWN = [
+  { name: 'Slow March in Place', side: 'Bring heart rate down', duration: 60 },
+  { name: 'Standing Forward Fold', side: 'Let arms hang, relax', duration: 30 },
+  { name: "Child's Pose", side: 'Breathe deeply', duration: 45 },
+  { name: 'Hip Flexor Stretch', side: 'Left Side', duration: 30 },
+  { name: 'Hip Flexor Stretch', side: 'Right Side', duration: 30 },
+  { name: 'Seated Figure-4 Stretch', side: 'Left Side', duration: 30 },
+  { name: 'Seated Figure-4 Stretch', side: 'Right Side', duration: 30 },
+  { name: 'Box Breathing', side: 'In 4 · Hold 4 · Out 4 · Hold 4', duration: 60 },
+];
+
+let WORK_TIME = 60;
+let REST_TIME = 30;
+let BETWEEN_TIME = 90;
+let ROUNDS = 3;
+let easyMode = false;
+
+function setEasyMode(on) {
+  easyMode = on;
+  WORK_TIME = on ? 45 : 60;
+  REST_TIME = 30;
+  BETWEEN_TIME = 90;
+  ROUNDS = on ? 2 : 3;
+  document.getElementById('easy-toggle').textContent = on ? '✓ Recovery Mode (45s · 2 rounds)' : 'Standard Mode (60s · 3 rounds)';
+}
+
+// ── VOICE ─────────────────────────────────────────────
+let voiceOn = true;
+function speak(text) {
+  if (!voiceOn || !('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 1.0;
+  u.pitch = 1.0;
+  u.volume = 1.0;
+  window.speechSynthesis.speak(u);
+}
+function toggleVoice() {
+  voiceOn = !voiceOn;
+  document.getElementById('voice-toggle').textContent = voiceOn ? '🔊 Voice On' : '🔇 Voice Off';
+  if (voiceOn) speak('Voice on');
+}
 
 // ── STATE ─────────────────────────────────────────────
 let interval = null;
@@ -486,12 +528,14 @@ let running = false;
 let startTime = null;
 let phaseTotal = 0;
 
-// warmup state
+// warmup/cooldown state
 let wuInterval = null;
 let wuRunning = false;
 let wuIndex = 0;
 let wuTime = 0;
 let wuPhaseTotal = 0;
+let ACTIVE_LIST = WARMUP;
+let activeLabel = 'Pre-Workout Stretch';
 
 // ── AUDIO ─────────────────────────────────────────────
 const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -528,17 +572,34 @@ function goHome() {
 
 // ── WARMUP ────────────────────────────────────────────
 function startWarmup() {
-  wuIndex = 0; wuRunning = false;
+  ACTIVE_LIST = WARMUP;
+  activeLabel = 'Pre-Workout Stretch';
+  document.getElementById('wu-title').textContent = activeLabel;
+  wuIndex = 0; wuTime = 0; wuRunning = false;
   if (wuInterval) clearInterval(wuInterval);
   renderWarmupList();
   updateWarmupDisplay();
   document.getElementById('wu-ctrl').textContent = 'Start';
+  document.getElementById('wu-phase').textContent = 'GET READY';
+  showScreen('warmup');
+}
+
+function startCooldown() {
+  ACTIVE_LIST = COOLDOWN;
+  activeLabel = 'Post-Workout Cool Down';
+  document.getElementById('wu-title').textContent = activeLabel;
+  wuIndex = 0; wuTime = 0; wuRunning = false;
+  if (wuInterval) clearInterval(wuInterval);
+  renderWarmupList();
+  updateWarmupDisplay();
+  document.getElementById('wu-ctrl').textContent = 'Start';
+  document.getElementById('wu-phase').textContent = 'GET READY';
   showScreen('warmup');
 }
 
 function renderWarmupList() {
   const list = document.getElementById('wu-list');
-  list.innerHTML = WARMUP.map((w, i) => `
+  list.innerHTML = ACTIVE_LIST.map((w, i) => `
     <div class="ex-item ${i === 0 ? 'active' : ''}" id="wu-item-${i}">
       <div class="ex-dot"></div>
       <div class="ex-name-small">${w.name}</div>
@@ -547,15 +608,15 @@ function renderWarmupList() {
 }
 
 function updateWarmupDisplay() {
-  const w = WARMUP[wuIndex];
+  const w = ACTIVE_LIST[wuIndex];
   document.getElementById('wu-name').textContent = w.name;
   document.getElementById('wu-side').textContent = w.side;
   document.getElementById('wu-count').textContent = wuTime || w.duration;
-  document.getElementById('wu-step').textContent = `${wuIndex + 1} / ${WARMUP.length}`;
-  const next = WARMUP[wuIndex + 1];
+  document.getElementById('wu-step').textContent = `${wuIndex + 1} / ${ACTIVE_LIST.length}`;
+  const next = ACTIVE_LIST[wuIndex + 1];
   document.getElementById('wu-next').innerHTML = next
     ? `Next: <span>${next.name}</span>`
-    : `<span>Warmup Complete!</span>`;
+    : `<span>${activeLabel} Complete!</span>`;
   document.querySelectorAll('[id^="wu-item-"]').forEach((el, i) => {
     el.className = 'ex-item' + (i === wuIndex ? ' active' : i < wuIndex ? ' done' : '');
   });
@@ -566,7 +627,7 @@ function toggleWarmup() {
   wuRunning = !wuRunning;
   document.getElementById('wu-ctrl').textContent = wuRunning ? 'Pause' : 'Resume';
   if (wuRunning) {
-    if (!wuTime) wuTime = WARMUP[wuIndex].duration;
+    if (!wuTime) { wuTime = ACTIVE_LIST[wuIndex].duration; speak(`${ACTIVE_LIST[wuIndex].name}, ${ACTIVE_LIST[wuIndex].side}`); }
     wuPhaseTotal = wuTime;
     wuInterval = setInterval(warmupTick, 1000);
   } else {
@@ -580,23 +641,26 @@ function warmupTick() {
   const pct = (wuTime / wuPhaseTotal) * 100;
   document.getElementById('wu-bar').style.width = pct + '%';
   document.getElementById('wu-count').textContent = wuTime;
-  if (wuTime <= 3 && wuTime > 0) tickBeep();
+  if (wuTime === 10) speak('10 seconds');
+  if (wuTime <= 3 && wuTime > 0) { tickBeep(); speak(String(wuTime)); }
   if (wuTime <= 0) {
     beepWork();
     wuIndex++;
-    if (wuIndex >= WARMUP.length) {
+    if (wuIndex >= ACTIVE_LIST.length) {
       clearInterval(wuInterval);
       document.getElementById('wu-phase').textContent = 'COMPLETE!';
-      document.getElementById('wu-name').textContent = 'Warmup Done 🎉';
-      document.getElementById('wu-side').textContent = 'Start your session';
+      document.getElementById('wu-name').textContent = activeLabel + ' Done 🎉';
+      document.getElementById('wu-side').textContent = activeLabel === 'Pre-Workout Stretch' ? 'Start your session' : 'Well done today';
       document.getElementById('wu-count').textContent = '–';
       document.getElementById('wu-ctrl').textContent = 'Done';
       wuRunning = false;
+      speak(activeLabel === 'Pre-Workout Stretch' ? 'Warmup complete. Time to start your session.' : 'Cool down complete. Well done today.');
       return;
     }
-    wuTime = WARMUP[wuIndex].duration;
+    wuTime = ACTIVE_LIST[wuIndex].duration;
     wuPhaseTotal = wuTime;
     updateWarmupDisplay();
+    speak(`${ACTIVE_LIST[wuIndex].name}, ${ACTIVE_LIST[wuIndex].side}`);
   }
 }
 
@@ -688,6 +752,9 @@ function toggleTimer() {
   running = !running;
   document.getElementById('main-ctrl').textContent = running ? 'Pause' : 'Resume';
   if (running) {
+    if (timeLeft === phaseTotal && phase === 'work' && currentEx === 0 && currentRound === 1) {
+      speak(`Round 1. ${currentSession.exercises[0].name}, go!`);
+    }
     interval = setInterval(timerTick, 1000);
   } else {
     clearInterval(interval);
@@ -698,7 +765,8 @@ function timerTick() {
   if (!running) return;
   timeLeft--;
 
-  if (timeLeft <= 3 && timeLeft > 0) tickBeep();
+  if (timeLeft === 10) speak('10 seconds');
+  if (timeLeft <= 3 && timeLeft > 0) { tickBeep(); speak(String(timeLeft)); }
 
   updateTimerDisplay();
 
@@ -718,12 +786,14 @@ function advancePhase() {
       timeLeft = REST_TIME;
       phaseTotal = REST_TIME;
       currentEx++;
+      speak(`Rest. Next, ${currentSession.exercises[currentEx].name}`);
     } else {
       // end of round
       if (currentRound < ROUNDS) {
         phase = 'between';
         timeLeft = BETWEEN_TIME;
         phaseTotal = BETWEEN_TIME;
+        speak(`Round ${currentRound} complete. Rest 90 seconds.`);
       } else {
         // ALL DONE
         clearInterval(interval);
@@ -737,6 +807,7 @@ function advancePhase() {
     phase = 'work';
     timeLeft = WORK_TIME;
     phaseTotal = WORK_TIME;
+    speak(`${currentSession.exercises[currentEx].name}, go!`);
   } else if (phase === 'between') {
     beepWork();
     currentRound++;
@@ -745,6 +816,7 @@ function advancePhase() {
     timeLeft = WORK_TIME;
     phaseTotal = WORK_TIME;
     renderExList();
+    speak(`Round ${currentRound}. ${currentSession.exercises[0].name}, go!`);
   }
 
   updateTimerDisplay();
@@ -756,6 +828,7 @@ function skipPhase() {
 
 function sessionComplete() {
   beepEnd();
+  speak('Session complete. Great work!');
   const elapsed = Math.round((Date.now() - startTime) / 60000);
   const kcal = Math.round(84 * 0.1 * elapsed); // rough MET estimate
   document.getElementById('c-time').textContent = elapsed;
