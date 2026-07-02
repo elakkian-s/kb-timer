@@ -357,7 +357,7 @@
       <div class="day-label">Days 1 · 3 · 5</div>
       <div class="day-title">Full Body Circuit</div>
       <div class="day-meta">~27 mins · 8kg & 10kg</div>
-      <div class="day-exercises">Two-Hand Swing · Goblet Squat · Wall Sit · Single-Arm Row · Halo · Bicep Curl</div>
+      <div class="day-exercises">Two-Hand Swing · Goblet Squat · Wall Sit · Single-Arm Row · Halo · Hammer Curl</div>
     </button>
 
     <button class="day-btn" onclick="startSession('day2')">
@@ -445,45 +445,60 @@ const SESSIONS = {
   day1: {
     label: 'Full Body Circuit',
     exercises: [
-      { name: 'Two-Hand Swing', kb: '10kg' },
-      { name: 'Goblet Squat', kb: '10kg' },
-      { name: 'Wall Sit Hold', kb: 'Bodyweight' },
-      { name: 'Single-Arm Row', kb: '8kg (each side)' },
-      { name: 'Halo', kb: '8kg' },
-      { name: 'Bicep Curl', kb: '8kg (each arm)' },
+      { name: 'Two-Hand Swing', kb: '10kg', duration: 60 },
+      { name: 'Goblet Squat', kb: '10kg', duration: 60 },
+      { name: 'Wall Sit Hold', kb: 'Bodyweight', duration: 60 },
+      { name: 'Single-Arm Row', kb: '8kg · Left arm', duration: 30 },
+      { name: 'Single-Arm Row', kb: '8kg · Right arm', duration: 30 },
+      { name: 'Halo', kb: '8kg', duration: 60 },
+      { name: 'Hammer Curl', kb: '8kg · Left arm (hold bell)', duration: 30 },
+      { name: 'Hammer Curl', kb: '8kg · Right arm (hold bell)', duration: 30 },
     ]
   },
   day2: {
     label: 'Conditioning + Core',
     exercises: [
-      { name: 'KB Swing', kb: '10kg' },
-      { name: 'Goblet Squat Hold', kb: '10kg · 5s pause' },
-      { name: 'Push Press', kb: '8kg (each side)' },
-      { name: 'Farmer Carry', kb: '8kg each hand' },
-      { name: 'Plank Hold', kb: 'Bodyweight' },
-      { name: 'Tricep Extension', kb: '8kg overhead, each arm' },
+      { name: 'KB Swing', kb: '10kg', duration: 60 },
+      { name: 'Goblet Squat Hold', kb: '10kg · 5s pause', duration: 60 },
+      { name: 'Push Press', kb: '8kg · Left arm', duration: 30 },
+      { name: 'Push Press', kb: '8kg · Right arm', duration: 30 },
+      { name: 'Farmer Carry', kb: '8kg each hand', duration: 60 },
+      { name: 'Plank Hold', kb: 'Bodyweight', duration: 60 },
+      { name: 'Tricep Extension', kb: '8kg · Both hands, hold horns', duration: 60 },
     ]
   }
 };
 
 const WARMUP = [
   { name: 'Hip Flexor Lunge', side: 'Left Side', duration: 45 },
+  { name: 'Switch Side', side: 'Move to right side', duration: 10, isTransition: true },
   { name: 'Hip Flexor Lunge', side: 'Right Side', duration: 45 },
+  { name: 'Reposition', side: 'Get on all fours', duration: 10, isTransition: true },
   { name: 'Cat-Cow', side: 'Slow & controlled', duration: 45 },
+  { name: 'Stay on floor', side: 'Lie on your back', duration: 10, isTransition: true },
   { name: 'Glute Bridge Hold', side: 'Squeeze at top', duration: 45 },
+  { name: 'Stand up slowly', side: 'Come to standing', duration: 10, isTransition: true },
   { name: "World's Greatest Stretch", side: 'Each Side', duration: 30 },
   { name: 'Squat to Stand', side: 'Slow descent', duration: 45 },
+  { name: 'Pick up KB', side: 'Grab your 8kg', duration: 10, isTransition: true },
   { name: 'KB Halo', side: '8kg · Each direction', duration: 30 },
 ];
 
 const COOLDOWN = [
   { name: 'Slow March in Place', side: 'Bring heart rate down', duration: 60 },
+  { name: 'Reposition', side: 'Stand tall, feet wide', duration: 10, isTransition: true },
   { name: 'Standing Forward Fold', side: 'Let arms hang, relax', duration: 30 },
+  { name: 'Get on the floor', side: 'Come to hands and knees', duration: 10, isTransition: true },
   { name: "Child's Pose", side: 'Breathe deeply', duration: 45 },
+  { name: 'Move to lunge', side: 'Left knee down', duration: 10, isTransition: true },
   { name: 'Hip Flexor Stretch', side: 'Left Side', duration: 30 },
+  { name: 'Switch Side', side: 'Right knee down', duration: 10, isTransition: true },
   { name: 'Hip Flexor Stretch', side: 'Right Side', duration: 30 },
-  { name: 'Seated Figure-4 Stretch', side: 'Left Side', duration: 30 },
-  { name: 'Seated Figure-4 Stretch', side: 'Right Side', duration: 30 },
+  { name: 'Sit down', side: 'Seated position', duration: 10, isTransition: true },
+  { name: 'Seated Figure-4 Stretch', side: 'Left leg crossed', duration: 30 },
+  { name: 'Switch Side', side: 'Right leg crossed', duration: 10, isTransition: true },
+  { name: 'Seated Figure-4 Stretch', side: 'Right leg crossed', duration: 30 },
+  { name: 'Lie down or sit', side: 'Get comfortable', duration: 10, isTransition: true },
   { name: 'Box Breathing', side: 'In 4 · Hold 4 · Out 4 · Hold 4', duration: 60 },
 ];
 
@@ -611,10 +626,14 @@ function renderWarmupList() {
 
 function updateWarmupDisplay() {
   const w = ACTIVE_LIST[wuIndex];
+  const isT = w.isTransition;
   document.getElementById('wu-name').textContent = w.name;
   document.getElementById('wu-side').textContent = w.side;
   document.getElementById('wu-count').textContent = wuTime || w.duration;
   document.getElementById('wu-step').textContent = `${wuIndex + 1} / ${ACTIVE_LIST.length}`;
+  document.getElementById('wu-phase').textContent = isT ? '— MOVE —' : '— HOLD —';
+  document.getElementById('wu-phase').className = 'phase-indicator ' + (isT ? 'between' : 'prep');
+  document.getElementById('wu-count').className = 'countdown ' + (isT ? 'between' : 'prep');
   const next = ACTIVE_LIST[wuIndex + 1];
   document.getElementById('wu-next').innerHTML = next
     ? `Next: <span>${next.name}</span>`
@@ -629,7 +648,12 @@ function toggleWarmup() {
   wuRunning = !wuRunning;
   document.getElementById('wu-ctrl').textContent = wuRunning ? 'Pause' : 'Resume';
   if (wuRunning) {
-    if (!wuTime) { wuTime = ACTIVE_LIST[wuIndex].duration; speak(`${ACTIVE_LIST[wuIndex].name}, ${ACTIVE_LIST[wuIndex].side}`); }
+    if (!wuTime) {
+      wuTime = ACTIVE_LIST[wuIndex].duration;
+      const w = ACTIVE_LIST[wuIndex];
+      if (!w.isTransition) speak(`${w.name}, ${w.side}`);
+      else speak(w.side);
+    }
     wuPhaseTotal = wuTime;
     wuInterval = setInterval(warmupTick, 1000);
   } else {
@@ -643,8 +667,9 @@ function warmupTick() {
   const pct = (wuTime / wuPhaseTotal) * 100;
   document.getElementById('wu-bar').style.width = pct + '%';
   document.getElementById('wu-count').textContent = wuTime;
-  if (wuTime === 10) speak('10 seconds');
-  if (wuTime <= 3 && wuTime > 0) { tickBeep(); speak(String(wuTime)); }
+  const w = ACTIVE_LIST[wuIndex];
+  if (!w.isTransition && wuTime === 10) speak('10 seconds');
+  if (wuTime <= 3 && wuTime > 0) { tickBeep(); if (!w.isTransition) speak(String(wuTime)); }
   if (wuTime <= 0) {
     beepWork();
     wuIndex++;
@@ -662,7 +687,9 @@ function warmupTick() {
     wuTime = ACTIVE_LIST[wuIndex].duration;
     wuPhaseTotal = wuTime;
     updateWarmupDisplay();
-    speak(`${ACTIVE_LIST[wuIndex].name}, ${ACTIVE_LIST[wuIndex].side}`);
+    const next = ACTIVE_LIST[wuIndex];
+    if (!next.isTransition) speak(`${next.name}, ${next.side}`);
+    else speak(next.side);
   }
 }
 
@@ -677,8 +704,8 @@ function startSession(dayKey) {
   currentRound = 1;
   currentEx = 0;
   phase = 'work';
-  timeLeft = WORK_TIME;
-  phaseTotal = WORK_TIME;
+  timeLeft = easyMode ? Math.min(currentSession.exercises[0].duration, 45) : currentSession.exercises[0].duration;
+  phaseTotal = timeLeft;
   running = false;
   startTime = Date.now();
 
@@ -687,6 +714,10 @@ function startSession(dayKey) {
   renderExList();
   updateTimerDisplay();
   showScreen('timer');
+}
+
+function getExDuration(ex) {
+  return easyMode ? Math.min(ex.duration, 45) : ex.duration;
 }
 
 function renderExList() {
@@ -782,22 +813,19 @@ function advancePhase() {
 
   if (phase === 'work') {
     beepRest();
-    // move to rest or between rounds
     if (currentEx < totalEx - 1) {
       phase = 'rest';
       timeLeft = REST_TIME;
       phaseTotal = REST_TIME;
       currentEx++;
-      speak(`Rest. Next, ${currentSession.exercises[currentEx].name}`);
+      speak(`Rest. Next, ${currentSession.exercises[currentEx].name}, ${currentSession.exercises[currentEx].kb}`);
     } else {
-      // end of round
       if (currentRound < ROUNDS) {
         phase = 'between';
         timeLeft = BETWEEN_TIME;
         phaseTotal = BETWEEN_TIME;
         speak(`Round ${currentRound} complete. Rest 90 seconds.`);
       } else {
-        // ALL DONE
         clearInterval(interval);
         running = false;
         sessionComplete();
@@ -807,16 +835,18 @@ function advancePhase() {
   } else if (phase === 'rest') {
     beepWork();
     phase = 'work';
-    timeLeft = WORK_TIME;
-    phaseTotal = WORK_TIME;
-    speak(`${currentSession.exercises[currentEx].name}, go!`);
+    const dur = getExDuration(currentSession.exercises[currentEx]);
+    timeLeft = dur;
+    phaseTotal = dur;
+    speak(`${currentSession.exercises[currentEx].name}, ${currentSession.exercises[currentEx].kb}, go!`);
   } else if (phase === 'between') {
     beepWork();
     currentRound++;
     currentEx = 0;
     phase = 'work';
-    timeLeft = WORK_TIME;
-    phaseTotal = WORK_TIME;
+    const dur = getExDuration(currentSession.exercises[0]);
+    timeLeft = dur;
+    phaseTotal = dur;
     renderExList();
     speak(`Round ${currentRound}. ${currentSession.exercises[0].name}, go!`);
   }
